@@ -18,6 +18,7 @@ public class VistaPrincipal extends javax.swing.JFrame {
      */
     public VistaPrincipal() {
         initComponents();
+        this.setLocationRelativeTo(null);
         ModeloPrincipal modelo =  new ModeloPrincipal(this);
         ControladorPrincipal controlador = new ControladorPrincipal(modelo);
         setControlador(controlador);
