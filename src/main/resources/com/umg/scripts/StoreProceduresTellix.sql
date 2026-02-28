@@ -7,7 +7,7 @@ CREATE OR ALTER PROCEDURE dbo.sp_ingreso_venta
     @FechaLimite    DATE,
     @NumeroCuenta   VARCHAR(50),
     @TotalVenta     DECIMAL(18, 2),
-    @Detalle        dbo.TVP_DetalleVenta READONLY,  -- <--- TVP
+    @Detalle        dbo.TVP_DetalleVenta READONLY,
     @Secuencia      INT OUTPUT
 AS
 BEGIN
