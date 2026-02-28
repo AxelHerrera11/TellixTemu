@@ -354,3 +354,41 @@ CREATE TABLE contacto_representante(
     FOREIGN KEY(tipo_contacto) REFERENCES tipo_contacto(codigo),
     FOREIGN KEY(fk_representante) REFERENCES representante(nit_representante)
 );
+
+
+CREATE TYPE dbo.TVP_DetalleVenta AS TABLE
+    (
+    codigo_producto INT NOT NULL,
+    cantidad        INT NOT NULL,
+    precio_bruto    DECIMAL(18,2) NOT NULL,
+    descuentos      DECIMAL(18,2) NOT NULL,
+    impuestos       DECIMAL(18,2) NOT NULL
+    );
+GO
+
+
+
+/**Utilizar el store procedure**/
+/*
+DECLARE @Detalle dbo.TVP_DetalleVenta;
+DECLARE @Secuencia INT;
+
+INSERT INTO @Detalle (codigo_producto, cantidad, precio_bruto, descuentos, impuestos)
+VALUES
+    (1, 2, 50.00, 0.00, 6.00),
+    (3, 1, 100.00, 10.00, 10.80);
+
+EXEC dbo.sp_ingreso_venta
+    @Cliente        = 'CF',
+    @UsuarioSistema = 'kevin',
+    @MetodoPago     = 1,
+    @PlazoCredito   = 0,
+    @TipoPlazo      = NULL,
+    @FechaLimite    = NULL,
+    @NumeroCuenta   = NULL,
+    @TotalVenta     = 190.80,
+    @Detalle        = @Detalle,
+    @Secuencia      = @Secuencia OUTPUT;
+
+SELECT @Secuencia AS SecuenciaGenerada;
+ */
