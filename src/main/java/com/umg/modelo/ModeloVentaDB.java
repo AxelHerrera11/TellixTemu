@@ -1,56 +1,26 @@
 package com.umg.modelo;
 
-import java.sql.Date;
-import java.sql.Timestamp;
+import java.util.Date;
+import java.util.List;
 
 public class ModeloVentaDB {
-    private String nit;
-    private Date fechaOperacion;
-    private Timestamp horaOperacion;
-    private String usuarioSistema;
-    private int metodoPago;
-    private int plazoCredito;
-    private String tipoPlazo;
-    private String estado;
-    private float total;
 
-    public ModeloVentaDB() {
+    public String cliente;
+    public String usuarioSistema;
+    public int metodoPago;
+    public int plazoCredito;
+    public String tipoPlazo;
+    public Date fechaLimite;
+    public String numeroCuenta;
+    public double totalVenta;
+    public List<ModeloDetalleVenta> detalles;
+
+    public String getCliente() {
+        return cliente;
     }
 
-    public ModeloVentaDB(String nit, Date fechaOperacion, Timestamp horaOperacion, String usuarioSistema, int metodoPago, int plazoCredito, String tipoPlazo, String estado, float total) {
-        this.nit = nit;
-        this.fechaOperacion = fechaOperacion;
-        this.horaOperacion = horaOperacion;
-        this.usuarioSistema = usuarioSistema;
-        this.metodoPago = metodoPago;
-        this.plazoCredito = plazoCredito;
-        this.tipoPlazo = tipoPlazo;
-        this.estado = estado;
-        this.total = total;
-    }
-
-    public String getNit() {
-        return nit;
-    }
-
-    public void setNit(String nit) {
-        this.nit = nit;
-    }
-
-    public Date getFechaOperacion() {
-        return fechaOperacion;
-    }
-
-    public void setFechaOperacion(Date fechaOperacion) {
-        this.fechaOperacion = fechaOperacion;
-    }
-
-    public Timestamp getHoraOperacion() {
-        return horaOperacion;
-    }
-
-    public void setHoraOperacion(Timestamp horaOperacion) {
-        this.horaOperacion = horaOperacion;
+    public void setCliente(String cliente) {
+        this.cliente = cliente;
     }
 
     public String getUsuarioSistema() {
@@ -85,19 +55,35 @@ public class ModeloVentaDB {
         this.tipoPlazo = tipoPlazo;
     }
 
-    public String getEstado() {
-        return estado;
+    public Date getFechaLimite() {
+        return fechaLimite;
     }
 
-    public void setEstado(String estado) {
-        this.estado = estado;
+    public void setFechaLimite(Date fechaLimite) {
+        this.fechaLimite = fechaLimite;
     }
 
-    public float getTotal() {
-        return total;
+    public String getNumeroCuenta() {
+        return numeroCuenta;
     }
 
-    public void setTotal(float total) {
-        this.total = total;
+    public void setNumeroCuenta(String numeroCuenta) {
+        this.numeroCuenta = numeroCuenta;
+    }
+
+    public double getTotalVenta() {
+        return totalVenta;
+    }
+
+    public void setTotalVenta(double totalVenta) {
+        this.totalVenta = totalVenta;
+    }
+
+    public List<ModeloDetalleVenta> getDetalles() {
+        return detalles;
+    }
+
+    public void setDetalles(List<ModeloDetalleVenta> detalles) {
+        this.detalles = detalles;
     }
 }

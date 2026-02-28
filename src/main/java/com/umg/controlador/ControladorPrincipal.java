@@ -1,7 +1,9 @@
 package com.umg.controlador;
 
 import com.umg.modelo.ModeloPrincipal;
+import com.umg.seguridad.Sesion;
 import com.umg.vistas.VistaVentas;
+import sql.Conector;
 
 import javax.swing.*;
 import java.awt.event.WindowEvent;
@@ -27,6 +29,8 @@ public class ControladorPrincipal implements WindowListener {
     @Override
     public void windowOpened(WindowEvent e) {
         cargarVista(vista);
+
+
     }
 
     @Override

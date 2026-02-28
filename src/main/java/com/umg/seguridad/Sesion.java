@@ -3,40 +3,23 @@ package com.umg.seguridad;
 import sql.Conector;
 
 public class Sesion {
-    private static Conector conexionActiva;
-    private static String usuario;
-    private static String rol;
 
-    public static void iniciarSesion(Conector con, String user, String role) {
-        conexionActiva = con;
-        usuario = user;
-        rol = role;
+    private static Conector conexion;
+    private static String usuario;
+
+    public static void setConexion(Conector c) {
+        conexion = c;
     }
 
     public static Conector getConexion() {
-        return conexionActiva;
+        return conexion;
+    }
+
+    public static void setUsuario(String u) {
+        usuario = u;
     }
 
     public static String getUsuario() {
         return usuario;
-    }
-
-    public static String getRol() {
-        return rol;
-    }
-
-    public static void cerrarSesion() {
-        try {
-            if (conexionActiva != null) {
-                conexionActiva.desconectar();
-                System.out.println("Conexión cerrada correctamente al cerrar sesión.");
-                conexionActiva = null;
-            }
-        } catch (Exception e) {
-            System.out.println("Error al cerrar la sesión: " + e.getMessage());
-        } finally {
-            usuario = null;
-            rol = null;
-        }
     }
 }

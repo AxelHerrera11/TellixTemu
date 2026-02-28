@@ -8,7 +8,7 @@ public class Conector {
     private static final String DRIVER = "com.microsoft.sqlserver.jdbc.SQLServerDriver";
 
     private final String HOST = "localhost";
-    private final String PORT = "1433";
+    private final String PORT = "1433;instanceName=SQLEXPRESS";
     private final String DATABASE = "tellix";
     private final String usuario = "sa";
     private final String contrasena = "Umg2026";

@@ -11,27 +11,19 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.List;
 
 
 public class ControladorVentas implements ActionListener, MouseListener {
     ModeloVentas modelo;
-
+    private VentaImp venta = new VentaImp();
 
     private JPanel btnNuevo, btnActualizar, btnEliminar, btnBuscar, btnLimpiar;
     private JLabel lblNuevo, lblActualizar, lblEliminar, lblBuscar, lblLimpiar;
-    private VentaImp venta = new VentaImp();
-
-    private ModeloVentaDB ventaDB = new ModeloVentaDB();
-    private List<ModeloDetalleVentaDB> detalleVentaDB = new ArrayList();
 
     private JComboBox<String> cmbMetodoDePago;
     private JComboBox<String> cmbTipoPlazo;
-
-    private int[] arrCodMetodosPago;
 
     private Map<JPanel, String> iconosBotones = new HashMap<>();
 
@@ -61,7 +53,6 @@ public class ControladorVentas implements ActionListener, MouseListener {
 
         inicializarIconos();
         configurarTabla();
-        cargarMetodosPagoEnCombo();
 
         cmbMetodoDePago = vista.cmbMetodoDePago;
         cmbTipoPlazo    = vista.cmbTipoPlazo;
@@ -71,88 +62,15 @@ public class ControladorVentas implements ActionListener, MouseListener {
     }
 
     private void cargarMetodosDePagoEnCombo() {
-//        if (cmbMetodoDePago == null) return;
-//
-//        cmbMetodoDePago.removeAllItems();
-//        cmbMetodoDePago.addItem("-- Seleccione --");
-//
-//        try {
-//            var lista = svcMetodos.listarOrdenadoPor("DESCRIPCION");
-//            for (IMetodosDeLiquidacion.RowMetodo r : lista) {
-//                // Mostramos solo la DESCRIPCIÓN (nombre bonito del método)
-//                cmbMetodoDePago.addItem(r.descripcion);
-//            }
-//        } catch (Exception e) {
-//            System.out.println("cargarMetodosDePagoEnCombo (Ventas): " + e.getMessage());
-//        }
+        for (String[] fila : venta.listarMetodosPago()) {
+            cmbMetodoDePago.addItem(fila[1]); // descripcion
+        }
     }
 
     private void cargarTiposPlazoEnCombo() {
-        if (cmbTipoPlazo == null) return;
-
-        cmbTipoPlazo.removeAllItems();
-        cmbTipoPlazo.addItem("-- Seleccione --");
-        cmbTipoPlazo.addItem("Día");
-        cmbTipoPlazo.addItem("Mes");
-        cmbTipoPlazo.addItem("Año");
-    }
-
-    // Devuelve "D", "M" o "A" según lo seleccionado en cmbTipoPlazo
-    private String obtenerCodigoTipoPlazoSeleccionado() {
-        if (cmbTipoPlazo == null) return null;
-
-        Object sel = cmbTipoPlazo.getSelectedItem();
-        if (sel == null) return null;
-
-        String texto = sel.toString().trim();
-
-        if (texto.equalsIgnoreCase("Día") || texto.equalsIgnoreCase("Dia")) {
-            return "D";
-        } else if (texto.equalsIgnoreCase("Mes")) {
-            return "M";
-        } else if (texto.equalsIgnoreCase("Año") || texto.equalsIgnoreCase("Ano")) {
-            return "A";
+        for (String[] fila : venta.listarTipoPlazo()) {
+            cmbTipoPlazo.addItem(fila[1]);
         }
-
-        // "-- Seleccione --" u otra cosa
-        return null;
-    }
-
-    private void registrarComboBox() {
-        var vista = modelo.getVista();
-
-        // 1) Tipo de plazo en formato D / M / A
-        String tipoPlazo = obtenerCodigoTipoPlazoSeleccionado();
-        if (tipoPlazo == null) {
-            JOptionPane.showMessageDialog(
-                    vista,
-                    "Seleccione un Tipo de Plazo (Día, Mes o Año).",
-                    "Aviso",
-                    JOptionPane.WARNING_MESSAGE
-            );
-            return;
-        }
-
-        // 2) Plazo de crédito numérico (opcional)
-        String plazoTxt = vista.txtPlazoCredito.getText().trim();
-        Integer plazoCredito = null;
-        if (!plazoTxt.isEmpty()) {
-            try {
-                plazoCredito = Integer.parseInt(plazoTxt);
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(
-                        vista,
-                        "El Plazo de Crédito debe ser numérico.",
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE
-                );
-                return;
-            }
-        }
-
-        ventaDB.setTipoPlazo(tipoPlazo);       // <-- AQUÍ QUEDA SOLO D / M / ¿¿¿A
-        ventaDB.setPlazoCredito(plazoCredito); // si tu modelo lo tiene
-
     }
 
     @Override
@@ -170,8 +88,6 @@ public class ControladorVentas implements ActionListener, MouseListener {
         } else if (e.getComponent().equals(modelo.getVista().btnEliminar)){
         } else if(e.getComponent().equals(modelo.getVista().btnInsertar)){
             agregarVenta();
-        } else if (e.getComponent().equals(modelo.getVista().btnEliminar)) {
-
         } else if (e.getComponent().equals(modelo.getVista().btnNuevo)) {
 
         }
@@ -218,153 +134,46 @@ public class ControladorVentas implements ActionListener, MouseListener {
         return null;
     }
 
-    public void traerProducto() {
-//        if (!modelo.getVista().txtBuscarProducto.getText().equals("")) {
-//            int valor = Integer.parseInt(modelo.getVista().txtBuscarProducto.getText());
-//            resumProd = venta.seleccionarProducto(valor);
-//            modelo.getVista().txtPrecioProducto.setText(String.valueOf(resumProd.getPrecioFinal()));
-//            modelo.getVista().txtNombreProducto.setText(resumProd.getNombre());
-//            modelo.getVista().txtStockDisponible.setText(String.valueOf(resumProd.getStockDisponible()));
-//        }
-    }
-
     public void configurarTabla() {
+
         DefaultTableModel modeloTabla = new DefaultTableModel(
                 new Object[]{
-                        "Producto",
-                        "Precio base",
-                        "Impuestos",
-                        "Descuentos",
-                        "Precio final",
-                        "Cantidad",
-                        "Subtotal"
+                        "ID",           // 0 ← OCULTO
+                        "Producto",     // 1
+                        "Precio bruto", // 2
+                        "Descuentos",   // 3
+                        "Impuestos",    // 4
+                        "Cantidad",     // 5
+                        "Subtotal"      // 6
                 }, 0
         );
-        modelo.getVista().tblProductos.setModel(modeloTabla);
-    }
 
-    public void agregarProducto() {
-//        String txtCant = modelo.getVista().txtCantidadProducto.getText().trim();
-//
-//        if (txtCant.isEmpty()) {
-//            JOptionPane.showMessageDialog(
-//                    modelo.getVista(),
-//                    "Debe ingresar una cantidad.",
-//                    "Validación",
-//                    JOptionPane.WARNING_MESSAGE
-//            );
-//            return;
-//        }
-//
-//        int cantidad;
-//        try {
-//            cantidad = Integer.parseInt(txtCant);
-//        } catch (NumberFormatException e) {
-//            JOptionPane.showMessageDialog(
-//                    modelo.getVista(),
-//                    "La cantidad debe ser numérica.",
-//                    "Error",
-//                    JOptionPane.ERROR_MESSAGE
-//            );
-//            return;
-//        }
-//
-//        if (resumProd == null) {
-//            JOptionPane.showMessageDialog(
-//                    modelo.getVista(),
-//                    "No hay producto seleccionado.",
-//                    "Error",
-//                    JOptionPane.ERROR_MESSAGE
-//            );
-//            return;
-//        }
-//
-//        float precioFinal = resumProd.getPrecioFinal();
-//        float subtotal = precioFinal * cantidad;
-//
-//        DefaultTableModel dtm = (DefaultTableModel) modelo.getVista().tblProductos.getModel();
-//
-//        Object[] fila = new Object[]{
-//                resumProd.getNombre(),          // Producto
-//                resumProd.getPrecioBase(),      // Precio base
-//                resumProd.getTotalImpuestos(),  // Impuestos
-//                resumProd.getTotalDescuentos(), // Descuentos
-//                resumProd.getPrecioFinal(),     // Precio final
-//                cantidad,                       // Cantidad
-//                subtotal                        // Subtotal
-//        };
-//
-//        dtm.addRow(fila);
-//
-//        float totalVenta = 0f;
-//        for (int i = 0; i < dtm.getRowCount(); i++) {
-//            Object valor = dtm.getValueAt(i, 6); // columna "Subtotal"
-//            if (valor instanceof Number) {
-//                totalVenta += ((Number) valor).floatValue();
-//            } else if (valor != null) {
-//                try {
-//                    totalVenta += Float.parseFloat(valor.toString());
-//                } catch (NumberFormatException ex) {
-//                }
-//            }
-//        }
-//
-//        ModeloDetalleVentaDB detalle = new ModeloDetalleVentaDB();
-//        detalle.setCodigo_producto(resumProd.getCodigo());
-//        detalle.setDescuentos(resumProd.getTotalDescuentos());
-//        detalle.setImpuestos(resumProd.getTotalImpuestos());
-//        detalle.setPrecio_bruto(resumProd.getPrecioBase());
-//        detalle.setCantidad(cantidad);
-//        agregarDetalle(detalle);
-//
-//        modelo.getVista().txtTotalVenta.setText(String.valueOf(totalVenta));
-//
-//        modelo.getVista().txtCantidadProducto.setText("");
-//        modelo.getVista().txtBuscarProducto.setText("");
-//        modelo.getVista().txtNombreProducto.setText("");
-//        modelo.getVista().txtStockDisponible.setText("");
-//        modelo.getVista().txtPrecioProducto.setText("");
-//        resumProd = null;
+        modelo.getVista().tblProductos.setModel(modeloTabla);
+
+        // Ocultar columna ID
+        modelo.getVista().tblProductos.getColumnModel().getColumn(0).setMinWidth(0);
+        modelo.getVista().tblProductos.getColumnModel().getColumn(0).setMaxWidth(0);
+        modelo.getVista().tblProductos.getColumnModel().getColumn(0).setWidth(0);
     }
 
     public void traerCliente() {
-//        if (!modelo.getVista().txtBuscarCliente.getText().equals("")) {
-//            String nit = modelo.getVista().txtBuscarCliente.getText().trim();
-//            clienteRes = venta.seleccionarCliente(nit);
-//
-//            if (clienteRes != null) {
-//                modelo.getVista().txtNITCliente.setText(clienteRes.getNit());
-//                modelo.getVista().txtNombreCliente.setText(clienteRes.getNombre());
-//            } else {
-//                JOptionPane.showMessageDialog(
-//                        modelo.getVista(),
-//                        "No se encontró ningún cliente con el NIT: " + nit,
-//                        "Cliente no encontrado",
-//                        JOptionPane.WARNING_MESSAGE
-//                );
-//
-//                modelo.getVista().txtNITCliente.setText("");
-//                modelo.getVista().txtNombreCliente.setText("");
-//            }
-//        } else {
-//            JOptionPane.showMessageDialog(
-//                    modelo.getVista(),
-//                    "Debe ingresar un NIT para buscar.",
-//                    "Validación",
-//                    JOptionPane.INFORMATION_MESSAGE
-//            );
-//        }
+        String[] cliente = venta.buscarCliente(modelo.getVista().txtNITCliente.getText());
+
+        if(cliente != null){
+            modelo.getVista().txtNombreCliente.setText(cliente[1]);
+        }
     }
 
-    public void agregarDetalle(ModeloDetalleVentaDB modeloDetalle){
-        detalleVentaDB.add(modeloDetalle);
-    }
+    public void traerProducto() {
+        Object[] prod = venta.buscarProducto(
+                Integer.parseInt(modelo.getVista().txtBuscarProducto.getText())
+        );
 
-    public void agregarVenta(){
-    }
-
-    public boolean validarTodo(){
-        return false;
+        if(prod != null){
+            modelo.getVista().txtNombreProducto.setText(prod[1].toString());
+            modelo.getVista().txtStockDisponible.setText(prod[2].toString());
+            modelo.getVista().txtPrecioProducto.setText(prod[3].toString());
+        }
     }
 
     public void limpiarTodo(){
@@ -383,25 +192,120 @@ public class ControladorVentas implements ActionListener, MouseListener {
         modelo.getVista().cmbTipoPlazo.setSelectedItem(0);
         modelo.getVista().txtTotalVenta.setText("");
         modelo.getVista().txtNumeroCuenta.setText("");
-        ventaDB = null;
-        detalleVentaDB = null;
     }
 
-    public void cargarMetodosPagoEnCombo(){
-        var vista = modelo.getVista();
-        JComboBox<String> cmbMetodo = vista.cmbMetodoDePago;
+    public void agregarProducto() {
 
-        cmbMetodo.removeAllItems();
-        cmbMetodo.addItem("-- Seleccione --");
+        DefaultTableModel tabla =
+                (DefaultTableModel) modelo.getVista().tblProductos.getModel();
 
-//        listaMetodosPago = venta.seleccionarMetodosPago();
-//        arrCodMetodosPago = new int[listaMetodosPago.size()];
+        int codigo = Integer.parseInt(modelo.getVista().txtBuscarProducto.getText());
+        String nombre = modelo.getVista().txtNombreProducto.getText();
+        double precio = Double.parseDouble(modelo.getVista().txtPrecioProducto.getText());
+        int cantidad = Integer.parseInt(modelo.getVista().txtCantidadProducto.getText());
 
-//        int i = 0;
-//        for (ModeloMetodoPagoDB mp : listaMetodosPago) {
-//            cmbMetodo.addItem(mp.getMetodo_pago());
-//            arrCodMetodosPago[i] = mp.getCodigo();
-//            i++;
-//        }
+        double descuentos = 0;
+        double impuestos = precio * 0.12; // ejemplo IVA
+        double subtotal = (precio + impuestos - descuentos) * cantidad;
+
+        tabla.addRow(new Object[]{
+                codigo,      // ← ID oculto
+                nombre,
+                precio,
+                descuentos,
+                impuestos,
+                cantidad,
+                subtotal
+        });
+    }
+
+    private void recalcularTotal() {
+        DefaultTableModel tabla = (DefaultTableModel) modelo.getVista().tblProductos.getModel();
+
+        double total = 0;
+
+        for (int i = 0; i < tabla.getRowCount(); i++) {
+            total += Double.parseDouble(tabla.getValueAt(i, 6).toString());
+        }
+
+        modelo.getVista().txtTotalVenta.setText(String.valueOf(total));
+    }
+
+    public void agregarVenta() {
+
+        if(modelo.getVista().txtNombreCliente.getText().isEmpty()){
+            JOptionPane.showMessageDialog(null,"Debe seleccionar un cliente");
+            return;
+        }
+
+        if(modelo.getVista().tblProductos.getRowCount()==0){
+            JOptionPane.showMessageDialog(null,"Debe agregar productos");
+            return;
+        }
+
+        ModeloVentaDB ventaModel = new ModeloVentaDB();
+
+        // ===== Datos generales =====
+        ventaModel.setCliente(modelo.getVista().txtNITCliente.getText());
+
+        // Usuario logueado desde sesión
+        ventaModel.setUsuarioSistema(com.umg.seguridad.Sesion.getUsuario());
+
+        // IMPORTANTE: aquí deberías usar el ID real del combo
+        ventaModel.setMetodoPago(cmbMetodoDePago.getSelectedIndex());
+
+        ventaModel.setPlazoCredito(
+                modelo.getVista().txtPlazoCredito.getText().isEmpty()
+                        ? 0
+                        : Integer.parseInt(modelo.getVista().txtPlazoCredito.getText())
+        );
+
+        ventaModel.setTipoPlazo(
+                cmbTipoPlazo.getSelectedItem() != null
+                        ? cmbTipoPlazo.getSelectedItem().toString()
+                        : null
+        );
+
+        ventaModel.setNumeroCuenta(modelo.getVista().txtNumeroCuenta.getText().isEmpty()
+                ? null
+                : modelo.getVista().txtNumeroCuenta.getText());
+
+        ventaModel.setTotalVenta(
+                Double.parseDouble(modelo.getVista().txtTotalVenta.getText())
+        );
+
+        // Fecha límite (si manejas crédito)
+        ventaModel.setFechaLimite(null); // puedes calcularla si tienes lógica
+
+        // ===== Detalles =====
+        DefaultTableModel tabla =
+                (DefaultTableModel) modelo.getVista().tblProductos.getModel();
+
+        java.util.List<ModeloDetalleVenta> detalles = new java.util.ArrayList<>();
+
+        for(int i=0;i<tabla.getRowCount();i++){
+
+            ModeloDetalleVenta det = new ModeloDetalleVenta(
+                    Integer.parseInt(tabla.getValueAt(i,0).toString()), // codigoProducto
+                    Integer.parseInt(tabla.getValueAt(i,5).toString()), // cantidad
+                    Double.parseDouble(tabla.getValueAt(i,2).toString()), // precioBruto
+                    Double.parseDouble(tabla.getValueAt(i,3).toString()), // descuentos
+                    Double.parseDouble(tabla.getValueAt(i,4).toString())  // impuestos
+            );
+
+            detalles.add(det);
+        }
+
+        ventaModel.setDetalles(detalles);
+
+        // ===== Guardar =====
+        int idVenta = venta.registrarVenta(ventaModel);
+
+        if(idVenta > 0){
+            JOptionPane.showMessageDialog(null,"Venta registrada. No. "+idVenta);
+            limpiarTodo();
+        }else{
+            JOptionPane.showMessageDialog(null,"Error al registrar venta");
+        }
     }
 }

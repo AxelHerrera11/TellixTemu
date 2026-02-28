@@ -6,6 +6,10 @@ package com.umg.vistas;
 
 import com.umg.controlador.ControladorPrincipal;
 import com.umg.modelo.ModeloPrincipal;
+import com.umg.seguridad.Sesion;
+import sql.Conector;
+
+import javax.swing.*;
 
 /**
  *
@@ -19,6 +23,15 @@ public class VistaPrincipal extends javax.swing.JFrame {
     public VistaPrincipal() {
         initComponents();
         this.setLocationRelativeTo(null);
+
+        Conector con = new Conector();
+        if (!con.conectar()) {
+            JOptionPane.showMessageDialog(null,"No se pudo conectar a la BD");
+            System.exit(0);
+        }
+        Sesion.setConexion(con);
+        Sesion.setUsuario("TEST");
+
         ModeloPrincipal modelo =  new ModeloPrincipal(this);
         ControladorPrincipal controlador = new ControladorPrincipal(modelo);
         setControlador(controlador);
