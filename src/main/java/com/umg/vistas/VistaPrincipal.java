@@ -30,7 +30,7 @@ public class VistaPrincipal extends javax.swing.JFrame {
             System.exit(0);
         }
         Sesion.setConexion(con);
-        Sesion.setUsuario("TEST");
+        Sesion.setUsuario("admin");
 
         ModeloPrincipal modelo =  new ModeloPrincipal(this);
         ControladorPrincipal controlador = new ControladorPrincipal(modelo);

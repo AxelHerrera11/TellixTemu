@@ -165,7 +165,7 @@ public class VistaVentas extends javax.swing.JPanel {
         txtNumeroCuenta.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 1, 1, 1, new java.awt.Color(102, 102, 102)));
         jPanel2.add(txtNumeroCuenta, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 520, 200, 30));
 
-        txtNITCliente.setEditable(false);
+        txtNITCliente.setEditable(true);
         txtNITCliente.setBackground(new java.awt.Color(255, 255, 255));
         txtNITCliente.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 1, 1, 1, new java.awt.Color(102, 102, 102)));
         jPanel2.add(txtNITCliente, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 210, 200, 30));
@@ -204,13 +204,11 @@ public class VistaVentas extends javax.swing.JPanel {
 
         cmbMetodoDePago.setBackground(new java.awt.Color(255, 255, 255));
         cmbMetodoDePago.setForeground(new java.awt.Color(108, 117, 125));
-        cmbMetodoDePago.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         cmbMetodoDePago.setBorder(null);
         jPanel2.add(cmbMetodoDePago, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 330, 200, 30));
 
         cmbTipoPlazo.setBackground(new java.awt.Color(255, 255, 255));
         cmbTipoPlazo.setForeground(new java.awt.Color(108, 117, 125));
-        cmbTipoPlazo.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
         cmbTipoPlazo.setBorder(null);
         jPanel2.add(cmbTipoPlazo, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 450, 200, 30));
 

@@ -217,6 +217,8 @@ public class ControladorVentas implements ActionListener, MouseListener {
                 cantidad,
                 subtotal
         });
+
+        recalcularTotal();
     }
 
     private void recalcularTotal() {
