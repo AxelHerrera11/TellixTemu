@@ -1,160 +1,165 @@
 CREATE OR ALTER PROCEDURE dbo.sp_ingreso_venta
-	@Cliente VARCHAR(50),
-	@UsuarioSistema VARCHAR(50),
-	@MetodoPago INT,
-	@PlazoCredito INT,
-	@TipoPlazo CHAR(1),
-	@FechaLimite DATE,
-	@NumeroCuenta VARCHAR(50),
-	@TotalVenta DECIMAL(18, 2),
-	@Secuencia INT OUTPUT
+    @Cliente        VARCHAR(50),
+    @UsuarioSistema VARCHAR(50),
+    @MetodoPago     INT,
+    @PlazoCredito   INT,
+    @TipoPlazo      CHAR(1),
+    @FechaLimite    DATE,
+    @NumeroCuenta   VARCHAR(50),
+    @TotalVenta     DECIMAL(18, 2),
+    @Detalle        dbo.TVP_DetalleVenta READONLY,  -- <--- TVP
+    @Secuencia      INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-	AS
+    DECLARE @FechaOperacion DATE = CONVERT(DATE, GETDATE()),
+            @HoraOperacion  DATETIME2 = SYSDATETIME(),
+            @EsCredito      CHAR(1);
 
-	BEGIN
-		SET NOCOUNT ON;
-		SET XACT_ABORT ON;
+    IF (ISNULL(@Cliente, '') = '')         THROW 50001, 'El cliente no puede estar vacío.', 1;
+    IF (@MetodoPago IS NULL OR @MetodoPago <= 0) THROW 50002, 'Método de pago no válido.', 1;
+    IF (ISNULL(@UsuarioSistema,'') = '')   THROW 50003, 'El usuario del sistema no puede estar vacío.', 1;
+    IF (@TotalVenta IS NULL OR @TotalVenta <= 0) THROW 50004, 'El total de la venta debe ser mayor a cero.', 1;
 
-		DECLARE @FechaOperacion DATE = CONVERT(DATE, GETDATE()),
-				@HoraOperacion DATETIME2 = GETDATE(),
-				@EsCredito CHAR(1);
+    IF NOT EXISTS (SELECT 1 FROM dbo.cliente WHERE nit = @Cliente)
+        THROW 50009, 'El cliente no existe.', 1;
 
-		IF (ISNULL(@Cliente, '') = '')
-		THROW 50001, 'El código de cliente no puede estar vacío.', 1;
+    SET @EsCredito = CASE WHEN ISNULL(@PlazoCredito, 0) > 0 THEN 'S' ELSE 'N' END;
 
-		IF (@MetodoPago <= 0 OR @MetodoPago IS NULL)
-		THROW 50002, 'Método de pago no válido', 1;
+    IF (@EsCredito = 'S' AND (@TipoPlazo IS NULL OR @TipoPlazo NOT IN ('D','M')))
+        THROW 50005, 'El tipo de plazo no es válido.', 1;
 
-		IF (@UsuarioSistema IS NULL OR @UsuarioSistema = '')
-		THROW 50003, 'El usuario del sistema no puede estar vacío.', 1;
+    IF (@EsCredito = 'S' AND @PlazoCredito <= 0)
+        THROW 50006, 'El plazo de crédito debe ser mayor a cero para ventas a crédito.', 1;
 
-		IF(@TotalVenta <= 0 OR @TotalVenta IS NULL)
-		THROW 50004, 'El total de la venta debe ser mayor a cero.', 1;
+    IF (@EsCredito = 'S' AND (ISNULL(LTRIM(RTRIM(@NumeroCuenta)),'') = ''))
+        THROW 50007, 'El número de cuenta no puede estar vacío para ventas a crédito.', 1;
 
-		--LOGICA PARA DETERMINAR SI LA VENTA ES A CRÉDITO
-		IF (@PlazoCredito < 0 OR @PlazoCredito IS NULL)
-		SET @EsCredito = 'N';
-		ELSE
-		SET @EsCredito = 'S';
+    IF (@EsCredito = 'S' AND (@FechaLimite IS NULL OR @FechaLimite <= @FechaOperacion))
+        THROW 50008, 'La fecha límite debe ser posterior a la fecha de operación.', 1;
 
-		IF(@EsCredito = 'S' AND (@TipoPlazo NOT IN ('D', 'M') OR @TipoPlazo IS NULL))
-		THROW 50005, 'El tipo de plazo no es un plazo válido', 1;
+    IF NOT EXISTS (SELECT 1 FROM @Detalle)
+        THROW 50011, 'La venta debe incluir al menos un producto en el detalle.', 1;
 
-		IF(@EsCredito = 'S' AND @PlazoCredito <= 0)
-		THROW 50006, 'El plazo de crédito debe ser mayor a cero para ventas a crédito.', 1;
+    -- Validar datos del TVP
+    IF EXISTS (SELECT 1 FROM @Detalle WHERE codigo_producto IS NULL OR codigo_producto <= 0)
+        THROW 50012, 'Hay productos inválidos en el detalle.', 1;
 
-		IF(@EsCredito = 'S' AND @NumeroCuenta IS NULL OR @NumeroCuenta = ' ')
-		THROW 50007, 'El número de cuenta no puede estar vacío para ventas a crédito.', 1;
+    IF EXISTS (SELECT 1 FROM @Detalle WHERE cantidad IS NULL OR cantidad <= 0)
+        THROW 50013, 'Hay cantidades inválidas en el detalle.', 1;
 
-		IF(@EsCredito = 'S' AND (@FechaLimite <= @FechaOperacion OR @FechaLimite IS NULL))
-		THROW 50008, 'La fecha límite de pago debe ser posterior a la fecha de operación.', 1;
+    IF EXISTS (SELECT 1 FROM @Detalle WHERE precio_bruto IS NULL OR precio_bruto <= 0)
+        THROW 50014, 'Hay precios brutos inválidos en el detalle.', 1;
 
-		IF NOT EXISTS (SELECT 1 FROM dbo.Cliente WHERE Nit = @Cliente)
-		THROW 50009, 'El cliente no existe.', 1;
+    IF EXISTS (SELECT 1 FROM @Detalle WHERE descuentos IS NULL OR descuentos < 0 OR impuestos IS NULL OR impuestos < 0)
+        THROW 50015, 'Descuentos/Impuestos no pueden ser negativos ni nulos.', 1;
 
-		BEGIN TRANSACTION;
-		BEGIN TRY
-			PRINT 'Iniciando proceso de ingreso de venta...';
+    -- Validar que los productos existan
+    IF EXISTS (
+        SELECT 1
+        FROM @Detalle d
+        LEFT JOIN dbo.producto p ON p.codigo = d.codigo_producto
+        WHERE p.codigo IS NULL
+    )
+        THROW 50016, 'El detalle contiene productos que no existen.', 1;
 
-			--Inserts
-			INSERT INTO dbo.venta (Cliente, Fecha_Operacion, Hora_Operacion, Usuario_Sistema, fk_Metodo_Pago, Plazo_Credito, Tipo_Plazo, Estado, Total)
-			VALUES (@Cliente, @FechaOperacion, @HoraOperacion, @UsuarioSistema, @MetodoPago, @PlazoCredito, @TipoPlazo, 'A', @TotalVenta);
+    BEGIN TRANSACTION;
+    BEGIN TRY
 
-			SET @Secuencia = CAST(SCOPE_IDENTITY() AS INT);
+        /* 1) Insertar encabezado venta */
+        INSERT INTO dbo.venta
+            (cliente, fecha_operacion, hora_operacion, usuario_sistema, fk_metodo_pago, plazo_credito, tipo_plazo, estado, total)
+        VALUES
+            (@Cliente, @FechaOperacion, @HoraOperacion, @UsuarioSistema, @MetodoPago,
+             CASE WHEN @EsCredito='S' THEN @PlazoCredito ELSE NULL END,
+             CASE WHEN @EsCredito='S' THEN @TipoPlazo ELSE NULL END,
+             'A', @TotalVenta);
 
-			IF(@EsCredito = 'S')
-			BEGIN
-				INSERT INTO dbo.Cuenta_Por_Cobrar (Secuencia, Estado, Metodo_Pago, Valor_Total, Valor_Pagado, Fecha_Limite, Numero_Cuenta, Cliente_Nit)
-				VALUES (@Secuencia, 'A', @MetodoPago, @TotalVenta, 0, @FechaLimite, @NumeroCuenta, @Cliente);
-			END
-			COMMIT TRANSACTION;
-			PRINT 'Venta ingresada exitosamente con secuencia: ' + CAST(@Secuencia AS VARCHAR);
+        SET @Secuencia = CAST(SCOPE_IDENTITY() AS INT);
 
-		END TRY
-		BEGIN CATCH
-			ROLLBACK TRANSACTION;
-			DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-			THROW 59999, @ErrorMessage, 1;
-		END CATCH
+        /* 2) Si es crédito, insertar cuenta por cobrar */
+        IF (@EsCredito = 'S')
+        BEGIN
+            INSERT INTO dbo.cuenta_por_cobrar
+                (secuencia, estado, metodo_pago, valor_total, valor_pagado, fecha_limite, numero_cuenta, cliente_nit)
+            VALUES
+                (@Secuencia, 'A', @MetodoPago, @TotalVenta, 0, @FechaLimite, @NumeroCuenta, @Cliente);
+        END
 
-	END;
-	GO
+        /* 3) Bloquear productos a afectar y validar stock (sumando cantidades por producto) */
+        ;WITH req AS (
+            SELECT codigo_producto, SUM(cantidad) AS cantidad_total
+            FROM @Detalle
+            GROUP BY codigo_producto
+        )
+        -- Locks para evitar carreras (ventas simultáneas)
+        SELECT p.codigo
+        FROM dbo.producto p WITH (UPDLOCK, HOLDLOCK)
+        JOIN req r ON r.codigo_producto = p.codigo;
 
---- PROCEDURE PARA INGRESO DE DETALLE DE VENTAS
-CREATE OR ALTER PROCEDURE dbo.sp_ingreso_detalle_venta
-	@Secuencia INT,
-	@CodigoProducto INT,
-	@Cantidad INT,
-	@PrecioBruto DECIMAL(18, 2),
-	@Descuentos DECIMAL(18, 2),
-	@Impuestos DECIMAL(18, 2)
+        -- Validar stock vs lo pedido (ya con lock puesto)
+        IF EXISTS (
+            SELECT 1
+            FROM dbo.producto p
+            JOIN (
+                SELECT codigo_producto, SUM(cantidad) AS cantidad_total
+                FROM @Detalle
+                GROUP BY codigo_producto
+            ) r ON r.codigo_producto = p.codigo
+            WHERE r.cantidad_total > p.stock_actual
+        )
+            THROW 60009, 'La cantidad solicitada excede el stock actual.', 1;
 
-	AS
+        IF EXISTS (
+            SELECT 1
+            FROM dbo.producto p
+            JOIN (
+                SELECT codigo_producto, SUM(cantidad) AS cantidad_total
+                FROM @Detalle
+                GROUP BY codigo_producto
+            ) r ON r.codigo_producto = p.codigo
+            WHERE (p.stock_actual - r.cantidad_total) < p.stock_minimo
+        )
+            THROW 50010, 'La venta dejaría stock por debajo del mínimo permitido.', 1;
 
-	BEGIN
-		SET NOCOUNT ON;
-		SET XACT_ABORT ON;
+        /* 4) Insertar TODOS los detalles de una sola vez */
+        INSERT INTO dbo.detalle_venta
+            (secuencia, codigo_producto, cantidad, precio_bruto, descuentos, impuestos)
+        SELECT
+            @Secuencia, codigo_producto, cantidad, precio_bruto, descuentos, impuestos
+        FROM @Detalle;
 
-		DECLARE @Correlativo INT,
-				@StockActual INT,
-				@StockMinimo INT;
+        /* 5) Actualizar stock por producto (sumado) */
+        ;WITH req AS (
+            SELECT codigo_producto, SUM(cantidad) AS cantidad_total
+            FROM @Detalle
+            GROUP BY codigo_producto
+        )
+        UPDATE p
+        SET p.stock_actual = p.stock_actual - r.cantidad_total
+        FROM dbo.producto p
+        JOIN req r ON r.codigo_producto = p.codigo;
 
-		IF (@Secuencia <= 0 OR @Secuencia IS NULL)
-		THROW 60001, 'La secuencia de la venta no es válida.', 1;
+        /* 6) (Opcional pero recomendado) Registrar movimiento en inventario */
+        INSERT INTO dbo.inventario (codigo_producto, cantidad_afectada, motivo, operacion, usuario)
+        SELECT
+            codigo_producto,
+            SUM(cantidad) AS cantidad_afectada,
+            CONCAT('Venta secuencia ', @Secuencia),
+            'V', -- S = salida (según tu convención)
+            @UsuarioSistema
+        FROM @Detalle
+        GROUP BY codigo_producto;
 
-		IF (@CodigoProducto <= 0 OR @CodigoProducto IS NULL)
-		THROW 60002, 'El código del producto no es válido.', 1;
+        COMMIT TRANSACTION;
 
-		IF NOT EXISTS (SELECT 1 FROM dbo.Producto WHERE Codigo = @CodigoProducto)
-		THROW 60003, 'El producto no existe.', 1;
-
-		IF (@Cantidad <= 0 OR @Cantidad IS NULL)
-		THROW 60004, 'La cantidad debe ser mayor a cero.', 1;
-
-		IF (@PrecioBruto <= 0 OR @PrecioBruto IS NULL)
-		THROW 60005, 'El precio bruto debe ser mayor a cero.', 1;
-
-		IF (@Descuentos < 0)
-		THROW 60006, 'Los descuentos no pueden ser negativos.', 1;
-
-		IF (@Impuestos < 0)
-		THROW 60007, 'Los impuestos no pueden ser negativos.', 1;
-
-		IF (@Impuestos = 0 OR @Impuestos IS NULL)
-		SET @Impuestos = 0;
-
-		IF (@Descuentos = 0 OR @Descuentos IS NULL)
-		SET @Descuentos = 0;
-
-		IF NOT EXISTS (SELECT 1 FROM dbo.Venta WHERE Secuencia = @Secuencia)
-		THROW 60008, 'La venta con la secuencia proporcionada no existe.', 1;
-
-		SELECT @StockActual = Stock_Actual, @StockMinimo = Stock_Minimo FROM dbo.Producto WHERE Codigo = @CodigoProducto;
-		IF (@Cantidad > @StockActual)
-		THROW 60009, 'La cantidad solicitada excede el stock actual del producto.', 1;
-		IF (@StockActual - @Cantidad < @StockMinimo)
-		THROW 50010, 'La cantidad solicitada dejaría el stock por debajo del mínimo permitido.', 1;
-
-		BEGIN TRANSACTION;
-		BEGIN TRY
-			PRINT 'Iniciando proceso de ingreso de detalle de venta...';
-		    
-			INSERT INTO dbo.Detalle_Venta (Secuencia, Codigo_Producto, Cantidad, Precio_Bruto, Descuentos, Impuestos)
-			VALUES (@Secuencia, @CodigoProducto, @Cantidad, @PrecioBruto, @Descuentos, @Impuestos);
-
-			--Bloqueamos antes de actualizar el stock
-			SELECT * FROM dbo.producto WITH (UPDLOCK, HOLDLOCK)  WHERE Codigo = @CodigoProducto 
-			--Actualizar stock del producto
-			UPDATE dbo.Producto
-			SET Stock_Actual = Stock_Actual - @Cantidad
-			WHERE Codigo = @CodigoProducto;
-
-			COMMIT;
-		END TRY
-		BEGIN CATCH
-			ROLLBACK;
-			DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
-			THROW 69999, @ErrorMessage, 1;
-		END CATCH
-	END;
-	GO
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        THROW 59999, @ErrorMessage, 1;
+    END CATCH
+END;
+GO
